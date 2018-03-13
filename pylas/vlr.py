@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod, abstractclassmethod
 from collections import namedtuple
 
 from .extradims import get_type_for_extra_dim
+from .types import Stream
+from typing import Iterable, List, Optional, Iterator, Union
 
 NULL_BYTE = b'\x00'
 
@@ -22,11 +24,11 @@ class RawVLR:
     No parsing of the record_data is made
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.header = VLRHeader()
         self.record_data = b''
 
-    def write_to(self, out):
+    def write_to(self, out: Stream) -> None:
         """ Write the raw header content to the out stream
         
         Parameters:
@@ -40,7 +42,7 @@ class RawVLR:
         out.write(self.record_data)
 
     @classmethod
-    def read_from(cls, data_stream):
+    def read_from(cls, data_stream: Stream) -> 'RawVLR':
         """ Instanciate a RawVLR by reading the content from the
         data stream
         
@@ -61,19 +63,19 @@ class RawVLR:
         raw_vlr.record_data = data_stream.read(header.record_length_after_header)
         return raw_vlr
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'RawVLR(user_id: {}, record_id: {}, len: {})'.format(
             self.header.user_id, self.header.record_id, self.header.record_length_after_header
         )
 
 class VLR:
-    def __init__(self, user_id, record_id, description='', data=b''):
+    def __init__(self, user_id: str, record_id: int, description: str='', data: bytes=b'') -> None:
         self.user_id = user_id
         self.record_id = record_id
         self.description = description
         self.record_data = bytes(data)
 
-    def into_raw(self):
+    def into_raw(self) -> RawVLR:
         raw_vlr = RawVLR()
         raw_vlr.header.user_id = self.user_id.encode('utf8')
         raw_vlr.header.description = self.description.encode('utf8')
@@ -84,7 +86,7 @@ class VLR:
         return raw_vlr
 
     @classmethod
-    def from_raw(cls, raw_vlr):
+    def from_raw(cls, raw_vlr: RawVLR) -> 'VLR':
         vlr = cls(
             raw_vlr.header.user_id.rstrip(NULL_BYTE).decode(),
             raw_vlr.header.record_id,
@@ -93,10 +95,10 @@ class VLR:
         )
         return vlr
 
-    def __len__(self):
+    def __len__(self) -> int:
         return VLR_HEADER_SIZE + len(self.record_data)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}(user_id: '{}', record_id: '{}', data len: '{}')".format(
             self.__class__.__name__, self.user_id, self.record_id, len(self.record_data))
 
@@ -104,14 +106,14 @@ class VLR:
 class KnownVLR(ABC):
     @staticmethod
     @abstractmethod
-    def official_user_id(): pass
+    def official_user_id() -> str: pass
 
     @staticmethod
     @abstractmethod
-    def official_record_ids(): pass
+    def official_record_ids() -> Iterable[int]: pass
 
     @abstractclassmethod
-    def from_raw(cls, raw): pass
+    def from_raw(cls, raw: RawVLR) -> 'KnownVLR': pass
 
 
 class ClassificationLookupStruct(ctypes.LittleEndianStructure):
@@ -310,7 +312,7 @@ class WaveformPacketVlr(VLR, KnownVLR):
 
 
 
-def vlr_factory(raw_vlr):
+def vlr_factory(raw_vlr: RawVLR) -> Union[VLR, KnownVLR]:
     user_id = raw_vlr.header.user_id.rstrip(NULL_BYTE).decode()
     for known_vlr in KnownVLR.__subclasses__():
         if known_vlr.official_user_id() == user_id and raw_vlr.header.record_id in known_vlr.official_record_ids():
@@ -320,17 +322,16 @@ def vlr_factory(raw_vlr):
 
 
 class VLRList:
-    def __init__(self):
+    def __init__(self) -> None:
         self.vlrs = []
 
-    def append(self, vlr):
+    def append(self, vlr: VLR) -> None:
         self.vlrs.append(vlr)
 
-
-    def get(self, vlr_type):
+    def get(self, vlr_type: str) -> List[VLR]:
         return [v for v in self.vlrs if v.__class__.__name__ == vlr_type]
 
-    def extract(self, vlr_type):
+    def extract(self, vlr_type: str) -> List[VLR]:
         kept_vlrs, extracted_vlrs = [], []
         for vlr in self.vlrs:
             if vlr.__class__.__name__ == vlr_type:
@@ -340,41 +341,43 @@ class VLRList:
         self.vlrs = kept_vlrs
         return extracted_vlrs
 
-    def pop(self, index):
+    def pop(self, index: int) -> VLR:
         return self.vlrs.pop(index)
 
-    def index(self, vlr_type):
+    def index(self, vlr_type: str) -> int:
         for i, v in enumerate(self.vlrs):
             if v.__class__.__name__ == vlr_type:
                 return i
         else:
             raise ValueError('{} is not in the VLR list'.format(vlr_type))
 
-    def write_to(self, out):
+    def write_to(self, out: Stream) -> None:
         for vlr in self.vlrs:
             vlr.into_raw().write_to(out)
 
-    def total_size_in_bytes(self):
+    def total_size_in_bytes(self) -> int:
         return sum(len(vlr) for vlr in self.vlrs)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[VLR]:
         yield from iter(self.vlrs)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> VLR:
         return self.vlrs[item]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.vlrs)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Union[List[VLR], 'VLRList']) -> bool:
         if isinstance(other, list):
             return self.vlrs == other
+        else:
+            return self.vlrs == other.vlrs
 
     def __repr__(self):
         return "[{}]".format(", ".join(repr(vlr) for vlr in self.vlrs))
 
     @classmethod
-    def read_from(cls, data_stream, num_to_read):
+    def read_from(cls, data_stream: Stream, num_to_read: int) -> 'VLRList':
         vlrlist = cls()
         for _ in range(num_to_read):
             raw = RawVLR.read_from(data_stream)
@@ -386,7 +389,7 @@ class VLRList:
         return vlrlist
 
     @classmethod
-    def from_list(cls, vlr_list):
+    def from_list(cls, vlr_list: List[VLR]) -> 'VLRList':
         vlrs = cls()
         vlrs.vlrs = vlr_list
         return vlrs
