@@ -3,15 +3,21 @@ from collections import namedtuple
 import numpy as np
 
 from pylas import errors
+from typing import Union, List, Set, Optional, Dict, Tuple
 
+SubField = namedtuple('SubField', ('name', 'mask', 'type'))
 
-def least_significant_bit(val):
+def least_significant_bit(val: int) -> int:
     """ Return the least significant bit
     """
     return (val & -val).bit_length() - 1
 
 
-def unpack(source_array, mask, dtype=np.uint8):
+def unpack(
+        source_array: np.ndarray,
+        mask: int,
+        dtype: Optional[np.dtype]=np.uint8
+    ) -> np.ndarray:
     """ Unpack sub field using its mask
 
     Parameters:
@@ -29,7 +35,12 @@ def unpack(source_array, mask, dtype=np.uint8):
     return ((source_array & mask) >> lsb).astype(dtype)
 
 
-def pack_into(array, sub_field_array, mask, inplace=False):
+def pack_into(
+        array: np.ndarray,
+        sub_field_array: np.ndarray,
+        mask: int,
+        inplace: Optional[bool]=False
+    ) -> Optional[np.ndarray]:
     """ Packs a sub field's array into another array using a mask
 
     Parameters:
@@ -64,7 +75,7 @@ def pack_into(array, sub_field_array, mask, inplace=False):
         return array | ((sub_field_array << lsb) & mask).astype(array.dtype)
 
 
-def point_format_to_dtype(point_format, dimensions):
+def point_format_to_dtype(point_format: int, dimensions: Dict[str, Tuple[str, str]]) -> np.dtype:
     """ build the numpy.dtype for a point format
 
     Parameters:
@@ -81,13 +92,13 @@ def point_format_to_dtype(point_format, dimensions):
     return np.dtype([dimensions[dim_name] for dim_name in point_format])
 
 
-def size_of_point_format(point_format_id):
+def size_of_point_format(point_format_id: int) -> int:
     """ Returns the size in bytes of a point format
     """
     return get_dtype_of_format_id(point_format_id).itemsize
 
 
-def dtype_append(dtype, extra_dims_tuples):
+def dtype_append(dtype: np.dtype, extra_dims_tuples: List[Tuple[str, str]]) -> np.dtype:
     """ Append a dimensions to an existing dtype
     """
     descr = dtype.descr
@@ -95,7 +106,10 @@ def dtype_append(dtype, extra_dims_tuples):
     return np.dtype(descr)
 
 
-def build_point_formats_dtypes(point_format_dimensions, dimensions_dict):
+def build_point_formats_dtypes(
+        point_format_dimensions: List[str],
+        dimensions_dict: Dict[str, Tuple[str, str]]
+    ) -> Dict[int, np.dtype]:
     """ Builds the dict mapping point format id to numpy.dtype
     In the dtypes, bit fields are still packed, and need to be unpacked each time
     you want to access them
@@ -104,7 +118,11 @@ def build_point_formats_dtypes(point_format_dimensions, dimensions_dict):
             for fmt_id, point_fmt in point_format_dimensions.items()}
 
 
-def build_unpacked_point_formats_dtypes(point_formats_dimensions, composed_fields_dict, dimensions_dict):
+def build_unpacked_point_formats_dtypes(
+        point_formats_dimensions: List[str],
+        composed_fields_dict: Dict[str, List[SubField]],
+        dimensions_dict: Dict[str, Tuple[str, str]]
+    ) -> Dict[int, np.dtype]:
     """ Builds the dict mapping point format id to numpy.dtype
     In the dtypes, bit fields are unpacked and can be accessed directly
     """
@@ -236,7 +254,6 @@ SCANNER_CHANNEL_MASK_6 = 0b00110000
 SCAN_DIRECTION_FLAG_MASK_6 = 0b01000000
 EDGE_OF_FLIGHT_LINE_MASK_6 = 0b10000000
 
-SubField = namedtuple('SubField', ('name', 'mask', 'type'))
 COMPOSED_FIELDS_0 = {
     'bit_fields': [
         SubField('return_number', RETURN_NUMBER_MASK_0, 'u1'),
@@ -297,7 +314,11 @@ UNPACKED_POINT_FORMATS_DTYPES = build_unpacked_point_formats_dtypes(
     POINT_FORMAT_DIMENSIONS, COMPOSED_FIELDS, DIMENSIONS)
 
 
-def unpack_sub_fields(data, point_format_id, extra_dims=None):
+def unpack_sub_fields(
+        data: np.ndarray,
+        point_format_id: int,
+        extra_dims: Optional[List[Tuple[str, str]]]=None
+    ) -> np.ndarray:
     dtype = get_dtype_of_format_id(
         point_format_id, extra_dims=extra_dims, unpacked=True)
     composed_dims = COMPOSED_FIELDS[point_format_id]
@@ -313,7 +334,7 @@ def unpack_sub_fields(data, point_format_id, extra_dims=None):
     return point_record
 
 
-def repack_sub_fields(data, point_format_id):
+def repack_sub_fields(data: np.ndarray, point_format_id: int) -> np.ndarray:
     repacked_array = np.zeros_like(
         data, get_dtype_of_format_id(point_format_id))
     composed_dims = COMPOSED_FIELDS[point_format_id]
@@ -336,7 +357,11 @@ def repack_sub_fields(data, point_format_id):
     return repacked_array
 
 
-def get_dtype_of_format_id(point_format_id, extra_dims=None, unpacked=False):
+def get_dtype_of_format_id(
+        point_format_id: int,
+        extra_dims: Optional[List[Tuple[str, str]]]=None,
+        unpacked: Optional[bool]=False
+    ) -> np.dtype:
     """ Returns the numpy.dtype of the point_format_id
     
     Parameters:
@@ -369,7 +394,7 @@ def get_dtype_of_format_id(point_format_id, extra_dims=None, unpacked=False):
     return points_dtype
 
 
-def get_sub_fields_of_fmt_id(point_format_id):
+def get_sub_fields_of_fmt_id(point_format_id: int) -> Dict[str, Tuple[str, SubField]]:
     """ Returns the sub fields of a point format
     
     Parameters:
@@ -389,7 +414,7 @@ def get_sub_fields_of_fmt_id(point_format_id):
     return sub_fields_dict
 
 
-def np_dtype_to_point_format(dtype, unpacked=False):
+def np_dtype_to_point_format(dtype: np.dtype, unpacked: Optional[bool]=False) -> int:
     """ Tries to find a matching point format id for the input numpy dtype
     To match, the input dtype has to be 100% equal to a point format dtype
     so all names & dimensions types must match
@@ -423,7 +448,7 @@ def np_dtype_to_point_format(dtype, unpacked=False):
             ))
 
 
-def min_file_version_for_point_format(point_format_id):
+def min_file_version_for_point_format(point_format_id: int) -> str:
     for version, point_formats in sorted(VERSION_TO_POINT_FMT.items()):
         if point_format_id in point_formats:
             return version
@@ -431,11 +456,11 @@ def min_file_version_for_point_format(point_format_id):
         raise errors.PointFormatNotSupported(point_format_id)
 
 
-def supported_point_formats():
+def supported_point_formats() -> Set[str]:
     return set(POINT_FORMAT_DIMENSIONS.keys())
 
 
-def format_has_waveform_packet(point_format_id):
+def format_has_waveform_packet(point_format_id: int) -> bool:
     dim_names = set(ALL_POINT_FORMATS_DIMENSIONS[point_format_id])
     for name in WAVEFORM_FIELDS_NAMES:
         if name not in dim_names:
@@ -446,7 +471,7 @@ def format_has_waveform_packet(point_format_id):
 
 # TODO lost precision (ie 8bit fields to -> 5 bit field)
 # but it's a bit harder
-def lost_dimensions(point_fmt_in, point_fmt_out):
+def lost_dimensions(point_fmt_in: int, point_fmt_out: int) -> List[str]:
     try:
         unpck_dims_in = UNPACKED_POINT_FORMATS_DTYPES[point_fmt_in]
     except KeyError as e:
@@ -465,5 +490,5 @@ def lost_dimensions(point_fmt_in, point_fmt_out):
     return completely_lost
 
 
-def is_point_fmt_compatible_with_version(point_format_id, file_version):
+def is_point_fmt_compatible_with_version(point_format_id: int, file_version: Union[str, int]) -> bool:
     return point_format_id in VERSION_TO_POINT_FMT[str(file_version)]
