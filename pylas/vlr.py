@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from .extradims import get_type_for_extra_dim
 from .types import Stream
-from typing import Iterable, List, Optional, Iterator, Union
+from typing import Iterable, List, Optional, Iterator, Union, Any, Tuple
 
 NULL_BYTE = b'\x00'
 
@@ -72,34 +72,34 @@ class RawVLR:
 
 class UnknownVLR(ABC):
     @abstractmethod
-    def into_raw(self): pass
+    def into_raw(self) -> RawVLR: pass
 
     @abstractmethod
-    def __len__(self): pass
+    def __len__(self) -> int: pass
 
     @abstractclassmethod
-    def from_raw(cls, raw): pass
+    def from_raw(cls, raw: RawVLR) -> 'UnknownVLR': pass
 
 
 class KnownVLR(UnknownVLR):
     @staticmethod
     @abstractmethod
-    def official_user_id(): pass
+    def official_user_id() -> str: pass
 
     @staticmethod
     @abstractmethod
-    def official_record_ids(): pass
+    def official_record_ids() -> Iterable[int]: pass
 
-    def parse_record_data(self, record_data): pass
+    def parse_record_data(self, record_data: bytes) -> Any: pass
 
     @classmethod
-    def from_raw(cls, raw):
+    def from_raw(cls, raw: RawVLR) -> 'KnownVLR':
         vlr = cls()
         vlr.parse_record_data(raw.record_data)
         return vlr
 
 class BaseVLR(UnknownVLR):
-    def __init__(self, user_id, record_id, description=''):
+    def __init__(self, user_id: int, record_id: int, description :Optional[str]='') -> None:
         self.user_id = user_id
         self.record_id = record_id
         self.description = description
@@ -113,16 +113,16 @@ class BaseVLR(UnknownVLR):
         raw_vlr.record_data = b''
         return raw_vlr
 
-    def __len__(self):
+    def __len__(self) -> int:
         return VLR_HEADER_SIZE
 
 
 class VLR(BaseVLR):
-    def __init__(self, user_id, record_id, description=''):
+    def __init__(self, user_id: int, record_id: int, description: Optional[str]='') -> None:
         super().__init__(user_id, record_id, description=description)
         self.record_data = b''
 
-    def into_raw(self):
+    def into_raw(self) -> RawVLR:
         raw_vlr = super().into_raw()
         raw_vlr.header.record_length_after_header = len(self.record_data)
         raw_vlr.record_data = self.record_data
@@ -154,45 +154,45 @@ class ClassificationLookupStruct(ctypes.LittleEndianStructure):
         ('description', ctypes.c_char * 15)
     ]
 
-    def __init__(self, class_number, description):
+    def __init__(self, class_number: int, description: str) -> None:
         if isinstance(description, str):
             super().__init__(class_number, description.encode())
         else:
             super().__init__(class_number, description)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'ClassificationLookup({} : {})'.format(self.class_number, self.description)
 
     @staticmethod
-    def size():
+    def size() -> int:
         return ctypes.sizeof(ClassificationLookupStruct)
 
 
 class ClassificationLookupVlr(BaseVLR, KnownVLR):
     _lookup_size = ClassificationLookupStruct.size()
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(self.official_user_id(), self.official_record_ids()[0], description='')
         self.lookups = []
 
-    def _is_max_num_lookups_reached(self):
+    def _is_max_num_lookups_reached(self) -> bool:
         return len(self) >= 256
 
-    def add_lookup(self, class_number, description):
+    def add_lookup(self, class_number: int, description: str) -> None:
         if not self._is_max_num_lookups_reached():
             self.lookups.append(ClassificationLookupStruct(class_number, description))
         else:
             raise ValueError('Cannot add more lookups')
 
 
-    def into_raw(self):
+    def into_raw(self) -> RawVLR:
         raw = super().into_raw()
         raw = b''.join(bytes(lookup) for lookup in self.lookups)
         return raw
 
-    def __len__(self):
+    def __len__(self) -> int:
         return VLR_HEADER_SIZE + len(self.lookups) * ctypes.sizeof(ClassificationLookupStruct)
 
-    def parse_record_data(self, record_data):
+    def parse_record_data(self, record_data: bytes) -> None:
         if len(record_data) % self._lookup_size != 0:
             raise ValueError("Length of ClassificationLookup VLR's record_data must be a multiple of {}".format(
                 self._lookup_size))
@@ -201,16 +201,16 @@ class ClassificationLookupVlr(BaseVLR, KnownVLR):
                 record_data[self._lookup_size * i: self._lookup_size * (i + 1)]))
 
     @staticmethod
-    def official_user_id():
+    def official_user_id() -> str:
         return "LASF_Spec"
 
     @staticmethod
-    def official_record_ids():
+    def official_record_ids() -> Tuple[int]:
         return 0,
 
 
 class LasZipVlr(VLR, KnownVLR):
-    def __init__(self, data):
+    def __init__(self, data: bytes):
         super().__init__(
             LasZipVlr.official_user_id(),
             LasZipVlr.official_record_ids()[0],
@@ -219,15 +219,15 @@ class LasZipVlr(VLR, KnownVLR):
         self.record_data = data
 
     @staticmethod
-    def official_user_id():
+    def official_user_id() -> str:
         return 'laszip encoded'
 
     @staticmethod
-    def official_record_ids():
+    def official_record_ids() -> Tuple[int]:
         return 22204,
 
     @classmethod
-    def from_raw(cls, raw_vlr):
+    def from_raw(cls, raw_vlr: RawVLR) -> 'LasZipVlr':
         return cls(raw_vlr.record_data)
 
 
@@ -247,25 +247,25 @@ class ExtraBytesStruct(ctypes.LittleEndianStructure):
         ('description', ctypes.c_char * 32),
     ]
 
-    def format_name(self):
+    def format_name(self) -> str:
         return self.name.rstrip(NULL_BYTE).decode().replace(' ', "_").replace('-', '_')
 
-    def type_tuple(self):
+    def type_tuple(self) -> Tuple[str, str]:
         if self.data_type == 0:
             return self.format_name(), '{}u1'.format(self.options)
         return self.format_name(), get_type_for_extra_dim(self.data_type)
 
     @staticmethod
-    def size():
+    def size() -> int:
         return ctypes.sizeof(ExtraBytesStruct)
 
 
 class ExtraBytesVlr(BaseVLR, KnownVLR):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('LASF_Spec', self.official_record_ids()[0], 'extra_bytes')
         self.extra_bytes_structs = []
 
-    def parse_record_data(self, data):
+    def parse_record_data(self, data: bytes) -> None:
         if (len(data) % ExtraBytesStruct.size()) != 0:
             raise ValueError("Data length of ExtraBytes vlr must be a multiple of {}".format(
                 ExtraBytesStruct.size() ))
@@ -274,26 +274,26 @@ class ExtraBytesVlr(BaseVLR, KnownVLR):
         for i in range(num_extra_bytes_structs):
             self.extra_bytes_structs[i] = ExtraBytesStruct.from_buffer_copy(data[ExtraBytesStruct.size() * i: ExtraBytesStruct.size() * (i + 1)])
 
-    def type_of_extra_dims(self):
+    def type_of_extra_dims(self) -> Tuple[str, str]:
         return [extra_dim.type_tuple() for extra_dim in self.extra_bytes_structs]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'ExtraBytesVlr(extra bytes structs: {})'.format(len(self.extra_bytes_structs))
 
-    def into_raw(self):
+    def into_raw(self) -> RawVLR:
         raw = super().into_raw()
         raw.record_data = b''.join(bytes(extra_struct) for extra_struct in self.extra_bytes_structs)
         return raw
 
-    def __len__(self):
+    def __len__(self) -> int:
         return VLR_HEADER_SIZE + len(self.extra_bytes_structs) * ExtraBytesStruct.size()
 
     @staticmethod
-    def official_user_id():
+    def official_user_id() -> str:
         return 'LASF_Spec'
 
     @staticmethod
-    def official_record_ids():
+    def official_record_ids() -> Tuple[int]:
         return 4,
 
 class WaveformPacketStruct(ctypes.LittleEndianStructure):
@@ -308,7 +308,7 @@ class WaveformPacketStruct(ctypes.LittleEndianStructure):
     ]
 
     @staticmethod
-    def size():
+    def size() -> int:
         return ctypes.sizeof(WaveformPacketStruct)
 
 
@@ -321,24 +321,24 @@ class WaveformPacketVlr(BaseVLR, KnownVLR):
         )
         self.parsed_record = None
 
-    def into_raw(self):
+    def into_raw(self) -> RawVLR:
         raw = super().into_raw()
         raw.record_data = bytes(self.parsed_record)
         return raw
 
-    def __len__(self):
+    def __len__(self) -> int:
         return super().__len__() + WaveformPacketStruct.size()
 
     @staticmethod
-    def official_record_ids():
+    def official_record_ids() -> Iterable[int]:
         return range(100, 356)
 
     @staticmethod
-    def official_user_id():
+    def official_user_id() -> str:
         return 'LASF_Spec'
 
     @classmethod
-    def from_raw(cls, raw_vlr):
+    def from_raw(cls, raw_vlr: RawVLR) -> 'WaveformPacketVlr':
         vlr = cls(raw_vlr.header.record_id, description=raw_vlr.header.description.decode())
         vlr.description = raw_vlr.header.description
         vlr.parsed_record = WaveformPacketStruct.from_buffer_copy(raw_vlr.record_data)
