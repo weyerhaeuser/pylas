@@ -8,19 +8,21 @@ from .compression import (compressed_id_to_uncompressed,
 from .headers import rawheader
 from .lasdatas import base, las12, las14
 from .point import dims, record
+from .types import Stream
+from typing import Union, Optional
 
 USE_UNPACKED = False
 
+LasDataObject = Union[las12.LasData, las14.LasData]
 
-def open_las(source):
+def open_las(source: Union[str, bytes, Stream, bytearray]) -> LasDataObject:
     """" Entry point for reading las data in pylas
     It takes care of forwarding the call to the right function depending on
     the objects type
 
     Parameters:
     ----------
-    source : {str | file_object | bytes | bytearray}
-        The source to read data from
+    source: The source to read data from
     Returns
     -------
     LasData object
@@ -34,13 +36,12 @@ def open_las(source):
         return read_las_stream(source)
 
 
-def read_las_file(filename):
+def read_las_file(filename: str) -> LasDataObject:
     """ Opens a file on disk and reads it
 
     Parameters:
     ----------
-    filename : {str}
-        The path to the file to read
+    filename : The path to the file to read
     Returns
     -------
     LasData
@@ -49,13 +50,12 @@ def read_las_file(filename):
         return read_las_stream(fin)
 
 
-def read_las_buffer(buffer):
+def read_las_buffer(buffer: Union[bytes, bytearray]) -> LasDataObject:
     """ Wraps a buffer in a file object to be able to read it
 
     Parameters:
     ----------
-    buffer : {bytes | bytarray}
-        The buffer containing the LAS file
+    buffer: The buffer containing the LAS file
     Returns
     -------
     LasData
@@ -64,16 +64,16 @@ def read_las_buffer(buffer):
         return read_las_stream(stream)
 
 
-def _warn_diff_not_zero(diff, end_of, start_of):
+def _warn_diff_not_zero(diff: int, end_of: str, start_of: str) -> None:
      warnings.warn("There are {} bytes between {} and {}".format(diff, end_of, start_of))
 
 # TODO: Sould probably raise instead of asserting, or at least warn
-def read_las_stream(data_stream):
+def read_las_stream(data_stream: Stream) -> LasDataObject:
     """ Reads a stream (file object like)
 
     Parameters:
     ----------
-    data_stream : {file object}
+    data_stream : source stream to read from
 
     Returns
     -------
@@ -159,7 +159,12 @@ def read_las_stream(data_stream):
     return las12.LasData(header=header, vlrs=vlrs, points=points)
 
 
-def convert(source_las, *, point_format_id=None, file_version=None):
+def convert(
+        source_las: LasDataObject,
+        *, #  Following args are keyword-only
+        point_format_id: Optional[int]=None,
+        file_version: Optional[Union[str, int]]=None
+    ) -> LasDataObject:
     """ Converts a Las from one point format to another
     Automatically upgrades the file version if source file version is not compatible with
     the new point_format_id
@@ -215,7 +220,7 @@ def convert(source_las, *, point_format_id=None, file_version=None):
     return las12.LasData(header=header, vlrs=source_las.vlrs, points=points)
 
 
-def create_las(point_format=0, file_version=None):
+def create_las(point_format: Optional[int]=0, file_version: Optional[Union[str, int]]=None) -> LasDataObject:
     if file_version is not None and point_format not in dims.VERSION_TO_POINT_FMT[file_version]:
         raise ValueError('Point format {} is not compatible with file version {}'.format(
             point_format, file_version
