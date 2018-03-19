@@ -99,7 +99,7 @@ class KnownVLR(UnknownVLR):
         return vlr
 
 class BaseVLR(UnknownVLR):
-    def __init__(self, user_id: int, record_id: int, description :Optional[str]='') -> None:
+    def __init__(self, user_id: str, record_id: int, description :Optional[str]='') -> None:
         self.user_id = user_id
         self.record_id = record_id
         self.description = description

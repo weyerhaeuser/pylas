@@ -221,7 +221,7 @@ def convert(
 
 
 def create_las(point_format: Optional[int]=0, file_version: Optional[Union[str, int]]=None) -> LasDataObject:
-    if file_version is not None and point_format not in dims.VERSION_TO_POINT_FMT[file_version]:
+    if file_version is not None and point_format not in dims.VERSION_TO_POINT_FMT[str(file_version)]:
         raise ValueError('Point format {} is not compatible with file version {}'.format(
             point_format, file_version
         ))

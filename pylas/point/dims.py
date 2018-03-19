@@ -75,7 +75,7 @@ def pack_into(
         return array | ((sub_field_array << lsb) & mask).astype(array.dtype)
 
 
-def point_format_to_dtype(point_format: int, dimensions: Dict[str, Tuple[str, str]]) -> np.dtype:
+def point_format_to_dtype(point_format: List[str], dimensions: Dict[str, Tuple[str, str]]) -> np.dtype:
     """ build the numpy.dtype for a point format
 
     Parameters:
@@ -107,7 +107,7 @@ def dtype_append(dtype: np.dtype, extra_dims_tuples: List[Tuple[str, str]]) -> n
 
 
 def build_point_formats_dtypes(
-        point_format_dimensions: List[str],
+        point_format_dimensions: Dict[int, List[str]],
         dimensions_dict: Dict[str, Tuple[str, str]]
     ) -> Dict[int, np.dtype]:
     """ Builds the dict mapping point format id to numpy.dtype
@@ -119,7 +119,7 @@ def build_point_formats_dtypes(
 
 
 def build_unpacked_point_formats_dtypes(
-        point_formats_dimensions: List[str],
+        point_formats_dimensions: Dict[str, List[str]],
         composed_fields_dict: Dict[str, List[SubField]],
         dimensions_dict: Dict[str, Tuple[str, str]]
     ) -> Dict[int, np.dtype]:
@@ -305,13 +305,17 @@ VERSION_TO_POINT_FMT = {
 }
 
 POINT_FORMATS_DTYPE = build_point_formats_dtypes(
-    POINT_FORMAT_DIMENSIONS, DIMENSIONS)
+    POINT_FORMAT_DIMENSIONS,
+    DIMENSIONS
+)
 
 ALL_POINT_FORMATS_DIMENSIONS = {**POINT_FORMAT_DIMENSIONS}
 ALL_POINT_FORMATS_DTYPE = {**POINT_FORMATS_DTYPE}
 
 UNPACKED_POINT_FORMATS_DTYPES = build_unpacked_point_formats_dtypes(
-    POINT_FORMAT_DIMENSIONS, COMPOSED_FIELDS, DIMENSIONS)
+    POINT_FORMAT_DIMENSIONS,
+    COMPOSED_FIELDS, DIMENSIONS
+)
 
 
 def unpack_sub_fields(
@@ -456,7 +460,7 @@ def min_file_version_for_point_format(point_format_id: int) -> str:
         raise errors.PointFormatNotSupported(point_format_id)
 
 
-def supported_point_formats() -> Set[str]:
+def supported_point_formats() -> Set[int]:
     return set(POINT_FORMAT_DIMENSIONS.keys())
 
 
