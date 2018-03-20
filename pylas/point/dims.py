@@ -7,6 +7,7 @@ from typing import Union, List, Set, Optional, Dict, Tuple
 
 SubField = namedtuple('SubField', ('name', 'mask', 'type'))
 
+
 def least_significant_bit(val: int) -> int:
     """ Return the least significant bit
     """
@@ -16,8 +17,8 @@ def least_significant_bit(val: int) -> int:
 def unpack(
         source_array: np.ndarray,
         mask: int,
-        dtype: Optional[np.dtype]=np.uint8
-    ) -> np.ndarray:
+        dtype: Optional[np.dtype] = np.uint8
+) -> np.ndarray:
     """ Unpack sub field using its mask
 
     Parameters:
@@ -35,12 +36,12 @@ def unpack(
     return ((source_array & mask) >> lsb).astype(dtype)
 
 
-def pack_into(
+def pack(
         array: np.ndarray,
         sub_field_array: np.ndarray,
         mask: int,
-        inplace: Optional[bool]=False
-    ) -> Optional[np.ndarray]:
+        inplace: Optional[bool] = False
+) -> Optional[np.ndarray]:
     """ Packs a sub field's array into another array using a mask
 
     Parameters:
@@ -109,7 +110,7 @@ def dtype_append(dtype: np.dtype, extra_dims_tuples: List[Tuple[str, str]]) -> n
 def build_point_formats_dtypes(
         point_format_dimensions: Dict[int, List[str]],
         dimensions_dict: Dict[str, Tuple[str, str]]
-    ) -> Dict[int, np.dtype]:
+) -> Dict[int, np.dtype]:
     """ Builds the dict mapping point format id to numpy.dtype
     In the dtypes, bit fields are still packed, and need to be unpacked each time
     you want to access them
@@ -122,7 +123,7 @@ def build_unpacked_point_formats_dtypes(
         point_formats_dimensions: Dict[str, List[str]],
         composed_fields_dict: Dict[str, List[SubField]],
         dimensions_dict: Dict[str, Tuple[str, str]]
-    ) -> Dict[int, np.dtype]:
+) -> Dict[int, np.dtype]:
     """ Builds the dict mapping point format id to numpy.dtype
     In the dtypes, bit fields are unpacked and can be accessed directly
     """
@@ -321,8 +322,8 @@ UNPACKED_POINT_FORMATS_DTYPES = build_unpacked_point_formats_dtypes(
 def unpack_sub_fields(
         data: np.ndarray,
         point_format_id: int,
-        extra_dims: Optional[List[Tuple[str, str]]]=None
-    ) -> np.ndarray:
+        extra_dims: Optional[List[Tuple[str, str]]] = None
+) -> np.ndarray:
     dtype = get_dtype_of_format_id(
         point_format_id, extra_dims=extra_dims, unpacked=True)
     composed_dims = COMPOSED_FIELDS[point_format_id]
@@ -347,7 +348,7 @@ def repack_sub_fields(data: np.ndarray, point_format_id: int) -> np.ndarray:
         if dim_name in composed_dims:
             for sub_field in composed_dims[dim_name]:
                 try:
-                    pack_into(
+                    pack(
                         repacked_array[dim_name],
                         data[sub_field.name],
                         sub_field.mask,
@@ -363,9 +364,9 @@ def repack_sub_fields(data: np.ndarray, point_format_id: int) -> np.ndarray:
 
 def get_dtype_of_format_id(
         point_format_id: int,
-        extra_dims: Optional[List[Tuple[str, str]]]=None,
-        unpacked: Optional[bool]=False
-    ) -> np.dtype:
+        extra_dims: Optional[List[Tuple[str, str]]] = None,
+        unpacked: Optional[bool] = False
+) -> np.dtype:
     """ Returns the numpy.dtype of the point_format_id
     
     Parameters:
@@ -418,7 +419,7 @@ def get_sub_fields_of_fmt_id(point_format_id: int) -> Dict[str, Tuple[str, SubFi
     return sub_fields_dict
 
 
-def np_dtype_to_point_format(dtype: np.dtype, unpacked: Optional[bool]=False) -> int:
+def np_dtype_to_point_format(dtype: np.dtype, unpacked: Optional[bool] = False) -> int:
     """ Tries to find a matching point format id for the input numpy dtype
     To match, the input dtype has to be 100% equal to a point format dtype
     so all names & dimensions types must match
@@ -477,18 +478,18 @@ def format_has_waveform_packet(point_format_id: int) -> bool:
 # but it's a bit harder
 def lost_dimensions(point_fmt_in: int, point_fmt_out: int) -> List[str]:
     try:
-        unpck_dims_in = UNPACKED_POINT_FORMATS_DTYPES[point_fmt_in]
+        unpacked_dims_in = UNPACKED_POINT_FORMATS_DTYPES[point_fmt_in]
     except KeyError as e:
         raise errors.PointFormatNotSupported(point_fmt_in) from e
 
     try:
-        unpck_dims_out = UNPACKED_POINT_FORMATS_DTYPES[point_fmt_out]
+        unpacked_dims_out = UNPACKED_POINT_FORMATS_DTYPES[point_fmt_out]
     except KeyError as e:
         raise errors.PointFormatNotSupported(point_fmt_out) from e
 
-    out_dims = unpck_dims_out.fields
+    out_dims = unpacked_dims_out.fields
     completely_lost = []
-    for dim_name in unpck_dims_in.names:
+    for dim_name in unpacked_dims_in.names:
         if dim_name not in out_dims:
             completely_lost.append(dim_name)
     return completely_lost
