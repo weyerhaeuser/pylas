@@ -12,13 +12,12 @@ class GlobalEncoding(ctypes.LittleEndianStructure):
     _pack_ = 1
     _fields_ = [
         ('gps_time_type', ctypes.c_uint16, 1),
-        ('waveform_internal', ctypes.c_uint16, 1), # 1.3
-        ('waveform_external', ctypes.c_uint16, 1), # 1.3
-        ('synthetic_return_numbers', ctypes.c_uint16, 1), # 1.3
-        ('wkt', ctypes.c_uint16, 1), # 1.4
+        ('waveform_internal', ctypes.c_uint16, 1),  # 1.3
+        ('waveform_external', ctypes.c_uint16, 1),  # 1.3
+        ('synthetic_return_numbers', ctypes.c_uint16, 1),  # 1.3
+        ('wkt', ctypes.c_uint16, 1),  # 1.4
         ('reserved', ctypes.c_uint16, 11),
     ]
-
 
 
 LAS_FILE_SIGNATURE = b'LASF'
@@ -84,7 +83,8 @@ LAS_HEADERS_SIZE = {
     '1.4': LAS_1_1_HEADER_SIZE + size_of(ADDITIONAL_LAS_1_3_FIELDS) + size_of(ADDITIONAL_LAS_1_4_FIELDS)
 }
 
-PROJECT_NAME  = b'pylas'
+PROJECT_NAME = b'pylas'
+
 
 # TODO: Should ctypes also be used for Las headers ?
 class RawHeader:

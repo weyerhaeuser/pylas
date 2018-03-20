@@ -15,6 +15,7 @@ USE_UNPACKED = False
 
 LasDataObject = Union[las12.LasData, las14.LasData]
 
+
 def open_las(source: Union[str, bytes, Stream, bytearray]) -> LasDataObject:
     """" Entry point for reading las data in pylas
     It takes care of forwarding the call to the right function depending on
@@ -65,7 +66,8 @@ def read_las_buffer(buffer: Union[bytes, bytearray]) -> LasDataObject:
 
 
 def _warn_diff_not_zero(diff: int, end_of: str, start_of: str) -> None:
-     warnings.warn("There are {} bytes between {} and {}".format(diff, end_of, start_of))
+    warnings.warn("There are {} bytes between {} and {}".format(diff, end_of, start_of))
+
 
 # TODO: Sould probably raise instead of asserting, or at least warn
 def read_las_stream(data_stream: Stream) -> LasDataObject:
@@ -109,7 +111,7 @@ def read_las_stream(data_stream: Stream) -> LasDataObject:
         if offset_to_chunk_table <= 0:
             warnings.warn("Strange offset to chunk table: {}, ignoring it..".format(
                 offset_to_chunk_table))
-            size_of_point_data = -1 # Read eveything
+            size_of_point_data = -1  # Read eveything
 
         points = point_record.from_compressed_buffer(
             data_stream.read(size_of_point_data),
@@ -143,7 +145,7 @@ def read_las_stream(data_stream: Stream) -> LasDataObject:
                 print(waveform_header.user_id, waveform_header.record_id,
                       waveform_header.record_length_after_header)
                 print("Read: {} MBytes of waveform_record".format(
-                    len(waveform_record) / 10**6))
+                    len(waveform_record) / 10 ** 6))
             elif not ge.waveform_internal and ge.waveform_external:
                 print(
                     "Waveform data is in an external file, you'll have to load it yourself")
@@ -161,10 +163,10 @@ def read_las_stream(data_stream: Stream) -> LasDataObject:
 
 def convert(
         source_las: LasDataObject,
-        *, #  Following args are keyword-only
-        point_format_id: Optional[int]=None,
-        file_version: Optional[Union[str, int]]=None
-    ) -> LasDataObject:
+        *,  # Following args are keyword-only
+        point_format_id: Optional[int] = None,
+        file_version: Optional[Union[str, int]] = None
+) -> LasDataObject:
     """ Converts a Las from one point format to another
     Automatically upgrades the file version if source file version is not compatible with
     the new point_format_id
@@ -202,7 +204,6 @@ def convert(
         raise ValueError('Point format {} is not compatible with file version {}'.format(
             point_format_id, file_version))
 
-
     header = source_las.header
     header.version = file_version
     header.point_data_format_id = point_format_id
@@ -220,7 +221,7 @@ def convert(
     return las12.LasData(header=header, vlrs=source_las.vlrs, points=points)
 
 
-def create_las(point_format: Optional[int]=0, file_version: Optional[Union[str, int]]=None) -> LasDataObject:
+def create_las(point_format: Optional[int] = 0, file_version: Optional[Union[str, int]] = None) -> LasDataObject:
     if file_version is not None and point_format not in dims.VERSION_TO_POINT_FMT[str(file_version)]:
         raise ValueError('Point format {} is not compatible with file version {}'.format(
             point_format, file_version
@@ -236,7 +237,10 @@ def create_las(point_format: Optional[int]=0, file_version: Optional[Union[str, 
         return las14.LasData(header=header)
     return las12.LasData(header=header)
 
+
 import os
+
+
 def _pass_through_laszip(stream, action='decompress'):
     import subprocess
 
@@ -249,14 +253,13 @@ def _pass_through_laszip(stream, action='decompress'):
             break
     else:
         raise FileNotFoundError('No laszip')
-    
+
     if action == "decompress":
         out_t = '-olas'
     elif action == "compress":
         out_t = '-olaz'
     else:
         raise ValueError('Invalid Action')
-
 
     prc = subprocess.Popen(
         [laszip_binary, "-stdin", out_t, "-stdout"],
@@ -270,8 +273,10 @@ def _pass_through_laszip(stream, action='decompress'):
         print(stderr.decode())
     return data
 
+
 def laszip_compress(stream):
     return _pass_through_laszip(stream, action='compress')
+
 
 def laszip_decompress(stream):
     return _pass_through_laszip(stream, action='decompress')

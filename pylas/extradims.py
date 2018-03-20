@@ -20,11 +20,13 @@ extra_dims = extra_dims_base + extra_dims_2 + extra_dims_3
 
 type_to_extradim_id = {type_str: i for i, type_str in enumerate(extra_dims)}
 
+
 def get_type_for_extra_dim(type_index: int) -> str:
     try:
         return extra_dims[type_index]
     except IndexError:
         raise errors.UnknownExtraType(type_index)
+
 
 def get_id_for_extra_dim_type(type_str: str) -> int:
     try:

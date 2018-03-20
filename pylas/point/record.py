@@ -5,18 +5,22 @@ import numpy as np
 from pylas.point import dims
 from pylas.compression import decompress_buffer
 
+from typing import overload, Tuple
 
 class PointRecord(ABC):
     @property
     @abstractmethod
-    def point_size(self): pass
+    def point_size(self) -> int:
+        pass
 
     @property
     @abstractmethod
-    def actual_point_size(self): pass
+    def actual_point_size(self) -> int:
+        pass
+
 
     @abstractmethod
-    def __getitem__(self, item): pass
+    def __getitem__(self, item) -> np.ndarray: pass
 
     @abstractmethod
     def __setitem__(self, key, value): pass
