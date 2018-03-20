@@ -6,6 +6,8 @@ import numpy as np
 from .errors import LazPerfNotFound
 from .point.dims import get_dtype_of_format_id, POINT_FORMAT_DIMENSIONS
 from . import vlr
+from typing import Optional
+from .types import Stream
 
 HAS_LAZPERF = False
 
@@ -46,7 +48,7 @@ def decompress_buffer(
         point_format_id: int,
         point_count: int,
         laszip_vlr: vlr.LasZipVlr
-    ) -> np.ndarray:
+) -> np.ndarray:
     raise_if_no_lazperf()
 
     ndtype = get_dtype_of_format_id(point_format_id)
@@ -85,7 +87,7 @@ def compress_buffer(uncompressed_buffer: bytes, record_schema: lazperf.RecordSch
     return compressed
 
 
-def _pass_through_laszip(stream, action='decompress'):
+def _pass_through_laszip(stream: Stream, action: Optional[str] = 'decompress') -> bytes:
     laszip_names = ('laszip', 'laszip.exe', 'laszip-cli', 'laszip-cli.exe')
 
     for binary in laszip_names:
@@ -117,9 +119,9 @@ def _pass_through_laszip(stream, action='decompress'):
     return data
 
 
-def laszip_compress(stream):
+def laszip_compress(stream: Stream) -> bytes:
     return _pass_through_laszip(stream, action='compress')
 
 
-def laszip_decompress(stream):
+def laszip_decompress(stream: Stream) -> bytes:
     return _pass_through_laszip(stream, action='decompress')

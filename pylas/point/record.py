@@ -4,8 +4,11 @@ import numpy as np
 
 from pylas.compression import decompress_buffer
 from pylas.point import dims
+from .. import vlr
 
+from ..types import Stream
 from typing import overload, Tuple
+
 
 class PointRecord(ABC):
     """ Wraps the numpy structured array contained the points data
@@ -35,20 +38,25 @@ class PointRecord(ABC):
     def __len__(self): pass
 
     @abstractmethod
-    def raw_bytes(self): pass
+    def raw_bytes(self) -> bytes: pass
 
     @abstractmethod
-    def write_to(self, out): pass
+    def write_to(self, out) -> None: pass
 
     @abstractclassmethod
-    def from_stream(cls, stream, point_format_id, count, extra_dims=None): pass
+    def from_stream(cls, stream: Stream, point_format_id: int, count: int, extra_dims=None) -> 'PointRecord': pass
 
     @abstractclassmethod
     def from_compressed_buffer(
-            cls, compressed_buffer, point_format_id, count, laszip_vlr): pass
+            cls,
+            compressed_buffer: bytes,
+            point_format_id: int,
+            count: int,
+            laszip_vlr: vlr.LasZipVlr
+    ) -> 'PointRecord': pass
 
     @abstractclassmethod
-    def empty(cls, point_format_id): pass
+    def empty(cls, point_format_id: int) -> 'PointRecord': pass
 
 
 class PackedPointRecord(PointRecord):
