@@ -33,8 +33,8 @@ def test_raw_header(get_header):
     header = get_header
     assert header.file_signature == b'LASF'
     assert header.file_source_id == 0
-    assert header.version_major == 1
-    assert header.version_minor == 2
+    assert header.version.major == 1
+    assert header.version.minor == 2
     assert header.system_identifier.rstrip(b'\0').decode() == ''
     assert header.generating_software.rstrip(b'\0').decode() == 'TerraScan'
     assert header.creation_day_of_year == 0

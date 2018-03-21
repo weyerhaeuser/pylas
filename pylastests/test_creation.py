@@ -47,8 +47,8 @@ def test_wrong_version():
 def test_good_version_is_used():
     for i in range(6, 8):
         las = pylas.create_las(point_format=i)
-        assert las.header.version_major == 1
-        assert las.header.version_minor == 4
+        assert las.header.version.major == 1
+        assert las.header.version.minor == 4
 
 
 def test_extraction(file):

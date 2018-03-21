@@ -19,6 +19,34 @@ class GlobalEncoding(ctypes.LittleEndianStructure):
     ]
 
 
+class FileVersion(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ('major', ctypes.c_uint8),
+        ('minor', ctypes.c_uint8)
+    ]
+
+    @classmethod
+    def from_str(cls, version):
+        major, minor = map(int, version.split('.'))
+        return cls(major=major, minor=minor)
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __gt__(self, other):
+        return str(self) > str(other)
+
+    def __lt__(self, other):
+        return str(self) < str(other)
+
+    def __str__(self):
+        return "{}.{}".format(self.major, self.minor)
+
+    def __repr__(self):
+        return "FileVersion({})".format(self)
+
+
 class RawHeader1_1(ctypes.LittleEndianStructure):
     _version_ = '1.1'
     _pack_ = 1
@@ -30,8 +58,7 @@ class RawHeader1_1(ctypes.LittleEndianStructure):
         ('guid_data_2', ctypes.c_uint16),
         ('guid_data_3', ctypes.c_uint16),
         ('guid_data_4', ctypes.c_uint8 * 8),
-        ('version_major', ctypes.c_uint8),
-        ('version_minor', ctypes.c_uint8),
+        ('version', FileVersion),
         ('system_identifier', ctypes.c_char * 32),
         ('generating_software', ctypes.c_char * 32),
         ('creation_day_of_year', ctypes.c_uint16),
@@ -60,7 +87,7 @@ class RawHeader1_1(ctypes.LittleEndianStructure):
     def __init__(self):
         super().__init__(
             file_signature=LAS_FILE_SIGNATURE,
-            version=self._version_,
+            version=FileVersion.from_str(self._version_),
             generating_software=PROJECT_NAME,
             header_size=LAS_HEADERS_SIZE[self._version_],
             offset_to_point_data=LAS_HEADERS_SIZE[self._version_]
@@ -78,18 +105,12 @@ class RawHeader1_1(ctypes.LittleEndianStructure):
     def number_of_points_by_return(self):
         return self.legacy_number_of_points_by_return
 
-    @property
-    def version(self):
-        return "{}.{}".format(self.version_major, self.version_minor)
-
-    @version.setter
-    def version(self, new_version):
+    def change_version(self, new_version):
         try:
             self.header_size = LAS_HEADERS_SIZE[str(new_version)]
         except KeyError:
             raise ValueError('{} is not a valid las header version')
-        self.version_major, self.version_minor = map(
-            int, new_version.split('.'))
+        self.version = FileVersion.from_str(new_version)
 
     @property
     def date(self):
@@ -136,11 +157,11 @@ class HeaderFactory:
         '1.3': RawHeader1_3,
         '1.4': RawHeader1_4
     }
-    offset_to_major_version = RawHeader1_1.version_major.offset
+    offset_to_version = RawHeader1_1.version.offset
 
     def _try_get_header_class(self, version):
         try:
-            return self.version_to_header[version]
+            return self.version_to_header[str(version)]
         except KeyError:
             raise errors.UnknownFileVersion(version)
 
@@ -149,11 +170,8 @@ class HeaderFactory:
 
     def read_from_stream(self, stream):
         old_pos = stream.tell()
-        stream.seek(self.offset_to_major_version)
-        major = int.from_bytes(stream.read(ctypes.sizeof(ctypes.c_uint8)), 'little')
-        minor = int.from_bytes(stream.read(ctypes.sizeof(ctypes.c_uint8)), 'little')
-        version = '{}.{}'.format(major, minor)
-
+        stream.seek(self.offset_to_version)
+        version = FileVersion.from_buffer(bytearray(stream.read(ctypes.sizeof(FileVersion))))
         header_class = self._try_get_header_class(version)
         stream.seek(old_pos)
         return header_class.from_buffer(bytearray(stream.read(ctypes.sizeof(header_class))))

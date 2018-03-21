@@ -163,7 +163,7 @@ def read_las_stream(data_stream):
                 raise ValueError(
                     'Incoherent values for internal and external waveform flags')
 
-    if header.version_major >= 1 and header.version_minor >= 4:
+    if header.version.major >= 1 and header.version.minor >= 4:
         evlrs = [evlr.RawEVLR.read_from(data_stream)
                  for _ in range(header.number_of_evlr)]
         return las14.LasData(header=header, vlrs=vlrs, points=points, evlrs=evlrs)
@@ -210,7 +210,7 @@ def convert(source_las, *, point_format_id=None, file_version=None):
             point_format_id, file_version))
 
     header = source_las.header
-    header.version = file_version
+    header.change_version(file_version)
     header.point_data_format_id = point_format_id
 
     points = record.PackedPointRecord.from_point_record(
@@ -241,7 +241,6 @@ def create_las(point_format=0, file_version=None):
         file_version = dims.min_file_version_for_point_format(point_format)
 
     header = headers.HeaderFactory().new(file_version)
-    header.version = str(file_version)
     header.point_data_format_id = point_format
 
     if file_version >= '1.4':
