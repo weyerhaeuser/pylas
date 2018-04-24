@@ -1,5 +1,5 @@
 """ 'Entry point' of the library, Contains the various functions meant to be
-use directly by a user
+used directly by a user
 """
 
 from . import headers
@@ -38,7 +38,7 @@ def open_las(source, closefd=True):
 
     Returns
     -------
-    LasReader
+    pylas.lasreader.LasReader
 
     """
     if isinstance(source, str):
@@ -52,8 +52,8 @@ def open_las(source, closefd=True):
 
 def read_las(source, closefd=True):
     """ Entry point for reading las data in pylas
-    It takes care of forwarding the call to the right function depending on
-    the objects type
+
+    Reads the whole file in memory.
 
     Parameters
     ----------
@@ -62,7 +62,7 @@ def read_las(source, closefd=True):
 
     Returns
     -------
-    LasData object
+    pylas.lasdatas.base.LasBase
         The object you can interact with to get access to the LAS points & VLRs
     """
     with open_las(source, closefd=closefd) as reader:
@@ -83,8 +83,10 @@ def create_from_header(header):
 def create_las(*, point_format=0, file_version=None):
     """ Function to create a new las data object
 
-    Note that if you provide both point_format and file_version
-    an exception will be raised if they are not compatible
+    .. note::
+
+        If you provide both point_format and file_version
+        an exception will be raised if they are not compatible
 
     >>> las = create_las(point_format=6, file_version="1.2")
     Traceback (most recent call last):
@@ -138,7 +140,8 @@ def convert(source_las, *, point_format_id=None, file_version=None):
     the new point_format_id
 
 
-    # convert to point format 0
+    convert to point format 0
+
     >>> las = read_las('pylastests/simple.las')
     >>> las.header.version
     '1.2'
@@ -146,8 +149,9 @@ def convert(source_las, *, point_format_id=None, file_version=None):
     >>> las.header.version
     '1.2'
 
-    # convert to point format 6, which need version >= 1.4
-    # then convert back to point format 0, version is not downgraded
+    convert to point format 6, which need version >= 1.4
+    then convert back to point format 0, version is not downgraded
+
     >>> las = read_las('pylastests/simple.las')
     >>> las.header.version
     '1.2'
@@ -158,8 +162,9 @@ def convert(source_las, *, point_format_id=None, file_version=None):
     >>> las.header.version
     '1.4'
 
-    # an exception is raised if the requested point format is not compatible
-    # with the file version
+    an exception is raised if the requested point format is not compatible
+    with the file version
+
     >>> las = read_las('pylastests/simple.las')
     >>> convert(las, point_format_id=6, file_version='1.2')
     Traceback (most recent call last):
@@ -181,7 +186,7 @@ def convert(source_las, *, point_format_id=None, file_version=None):
 
     Returns
     -------
-    LasData if a destination is provided, else returns None
+        LasData
     """
     point_format_id = source_las.points_data.point_format_id if point_format_id is None else point_format_id
 

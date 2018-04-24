@@ -1,5 +1,5 @@
 """ The functions related to the LAZ format (compressed LAS)
-Lazperf is made optional by catching the ModuleNotFoundError, and raisin an exception
+Lazperf is made optional by catching the ModuleNotFoundError, and raising an exception
 when compression/decompression is actually needed
 
 There are also functions to use Laszip (meant to be used as a fallback)
@@ -18,7 +18,9 @@ try:
     import lazperf
 
     HAS_LAZPERF = True
-except ModuleNotFoundError:
+    # we should capture ModuleNotRoundError but its python3.6 exception type
+    # and ReadTheDocs does uses 3.5
+except:
     HAS_LAZPERF = False
 
 
