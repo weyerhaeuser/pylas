@@ -3,6 +3,13 @@ pylas
 
 Another way of reading LAS/LAZ in Python.
 
+.. image:: https://readthedocs.org/projects/pylas/badge/?version=latest
+    :target: https://pylas.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
+
+.. image:: https://travis-ci.org/tmontaigu/pylas.svg?branch=master
+
 Example
 -------
 
@@ -17,7 +24,7 @@ Example
 
     # Open data to inspect header and then read
     with pylas.open('filename.las') as f:
-        if f.header.number_of_point_records < 10 ** 8:
+        if f.header.point_count < 10 ** 8:
             las = f.read()
     print(las.vlrs)
 
@@ -30,7 +37,7 @@ Dependencies & Requirements
 
 Python 3 Only.
 
-lazperf_ is an optionnal, but recommended dependency that allows pylas to read and write compressed LAZ files.
+lazperf_ is an optional, but recommended dependency that allows pylas to read and write compressed LAZ files.
 
 .. _lazperf: https://github.com/hobu/laz-perf
 

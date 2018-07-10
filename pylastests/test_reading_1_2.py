@@ -8,14 +8,14 @@ import pylas
 from pylastests.test_common import simple_las, simple_laz
 
 
-@pytest.fixture(params=[simple_las, simple_laz], scope='session')
+@pytest.fixture(params=[simple_las, simple_laz], scope="session")
 def read_simple(request):
     return pylas.read(request.param)
 
 
 @pytest.fixture()
 def open_simple():
-    return open(simple_las, mode='rb')
+    return open(simple_las, mode="rb")
 
 
 @pytest.fixture()
@@ -32,18 +32,18 @@ def get_header():
 # TODO add test of global encoding
 def test_raw_header(get_header):
     header = get_header
-    assert header.file_signature == b'LASF'
+    assert header.file_signature == b"LASF"
     assert header.file_source_id == 0
     assert header.version_major == 1
     assert header.version_minor == 2
-    assert header.system_identifier.rstrip(b'\0').decode() == ''
-    assert header.generating_software.rstrip(b'\0').decode() == 'TerraScan'
+    assert header.system_identifier.rstrip(b"\0").decode() == ""
+    assert header.generating_software.rstrip(b"\0").decode() == "TerraScan"
     assert header.creation_day_of_year == 0
     assert header.creation_year == 0
     assert header.size == 227
     assert header.offset_to_point_data == 227
     assert header.number_of_vlr == 0
-    assert header.point_data_format_id == 3
+    assert header.point_format_id == 3
     assert header.point_data_record_length == 34
     assert header.point_count == 1065
     assert tuple(header.number_of_points_by_return) == (925, 114, 21, 5, 0)

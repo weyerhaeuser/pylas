@@ -18,15 +18,15 @@ try:
     import lazperf
 
     HAS_LAZPERF = True
-    # we should capture ModuleNotRoundError but its python3.6 exception type
-    # and ReadTheDocs does uses 3.5
+    # we should capture ModuleNotRoundError but it's a python3.6 exception type
+    # and ReadTheDocs uses 3.5
 except:
     HAS_LAZPERF = False
 
 
 def raise_if_no_lazperf():
     if not HAS_LAZPERF:
-        raise LazPerfNotFound('Cannot manipulate laz data')
+        raise LazPerfNotFound("Cannot manipulate laz data")
 
 
 def is_point_format_compressed(point_format_id):
@@ -56,7 +56,9 @@ def decompress_buffer(compressed_buffer, point_format_id, point_count, laszip_vl
 
     point_uncompressed = decompressor.decompress_points(point_count)
 
-    point_uncompressed = np.frombuffer(point_uncompressed, dtype=ndtype, count=point_count)
+    point_uncompressed = np.frombuffer(
+        point_uncompressed, dtype=ndtype, count=point_count
+    )
 
     return point_uncompressed
 
@@ -65,10 +67,12 @@ def create_laz_vlr(point_format_id):
     raise_if_no_lazperf()
     record_schema = lazperf.RecordSchema()
 
-    if 'gps_time' in POINT_FORMAT_DIMENSIONS[point_format_id]:
+    point_format_dimensions = POINT_FORMAT_DIMENSIONS[point_format_id]
+
+    if "gps_time" in point_format_dimensions:
         record_schema.add_gps_time()
 
-    if 'red' in POINT_FORMAT_DIMENSIONS[point_format_id]:
+    if "red" in point_format_dimensions:
         record_schema.add_rgb()
 
     return lazperf.LazVLR(record_schema)
@@ -84,23 +88,32 @@ def compress_buffer(uncompressed_buffer, record_schema, offset):
     return compressed
 
 
-def _pass_through_laszip(stream, action='decompress'):
-    laszip_names = ('laszip', 'laszip.exe', 'laszip-cli', 'laszip-cli.exe')
+def find_laszip_executable():
+    laszip_names = ("laszip", "laszip.exe", "laszip-cli", "laszip-cli.exe")
 
     for binary in laszip_names:
-        in_path = [os.path.isfile(os.path.join(x, binary)) for x in os.environ["PATH"].split(os.pathsep)]
+        in_path = (
+            os.path.isfile(os.path.join(x, binary))
+            for x in os.environ["PATH"].split(os.pathsep)
+        )
         if any(in_path):
-            laszip_binary = binary
-            break
+            return binary
+
     else:
-        raise FileNotFoundError('No laszip')
+        return None
+
+
+def _pass_through_laszip(stream, action="decompress"):
+    laszip_binary = find_laszip_executable()
+    if laszip_binary is None:
+        raise FileNotFoundError("Could not find laszip executable")
 
     if action == "decompress":
-        out_t = '-olas'
+        out_t = "-olas"
     elif action == "compress":
-        out_t = '-olaz'
+        out_t = "-olaz"
     else:
-        raise ValueError('Invalid Action')
+        raise ValueError("Invalid Action")
 
     prc = subprocess.Popen(
         [laszip_binary, "-stdin", out_t, "-stdout"],
@@ -110,15 +123,17 @@ def _pass_through_laszip(stream, action='decompress'):
     )
     data, stderr = prc.communicate(stream.read())
     if prc.returncode != 0:
-        raise RuntimeError("Laszip failed to {} with error code {}\n\t{}".format(
-            action, prc.returncode, '\n\t'.join(stderr.decode().splitlines())
-        ))
+        raise RuntimeError(
+            "Laszip failed to {} with error code {}\n\t{}".format(
+                action, prc.returncode, "\n\t".join(stderr.decode().splitlines())
+            )
+        )
     return data
 
 
 def laszip_compress(stream):
-    return _pass_through_laszip(stream, action='compress')
+    return _pass_through_laszip(stream, action="compress")
 
 
 def laszip_decompress(stream):
-    return _pass_through_laszip(stream, action='decompress')
+    return _pass_through_laszip(stream, action="decompress")

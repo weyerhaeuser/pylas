@@ -49,6 +49,8 @@ User Guide
     intro
     installation
     basic
+    examples
+    lessbasic
 
 API Documentation
 =================
